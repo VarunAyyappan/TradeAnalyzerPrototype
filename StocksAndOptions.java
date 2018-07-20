@@ -3,19 +3,19 @@ import java.io.PrintWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 
-public class Test
+public class StocksAndOptions
 {
   private Scanner fileIn;
   private PrintWriter fileOut;
 
-  public Test() {
+  public StocksAndOptions() {
     fileIn = null;
     fileOut = null;
     System.out.println("Ammends your excel file for Stocks and Options.");
   }
 
   public static void main(String[] args) {
-    Test test = new Test();
+    StocksAndOptions test = new StocksAndOptions();
     String fileName = "";
 
     fileName = test.getFileName();
