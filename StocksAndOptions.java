@@ -1,73 +1,68 @@
 import java.util.Scanner;
 import java.util.ArrayList;
 import java.io.PrintWriter;
-import java.io.File;
-import java.io.FileNotFoundException;
 
-public class StocksAndOptions
-{
+public class StocksAndOptions {
+  private String fileName;
   private Scanner fileIn;
   private PrintWriter fileOut;
+  ArrayList<String> name;
+  ArrayList<Double> shortTerm, longTerm, returnOfCapital, dividendReceived, total;
+  ArrayList<Integer> numTrades, numDistributions;
+
+  public static final String ANSI_RESET = "\u001B[0m";
+  public static final String ANSI_RED = "\u001B[31m";
+  public static final String ANSI_GREEN = "\u001B[32m";
 
   public StocksAndOptions() {
+    fileName = "";
     fileIn = null;
     fileOut = null;
-    System.out.println("Ammends your excel file for Stocks and Options.");
+    name = new ArrayList<String>();
+    shortTerm = new ArrayList<Double>();
+    longTerm = new ArrayList<Double>();
+    returnOfCapital = new ArrayList<Double>();
+    dividendReceived = new ArrayList<Double>();
+    total = new ArrayList<Double>();
+    numTrades = new ArrayList<Integer>();
+    numDistributions = new ArrayList<Integer>();
   }
 
   public static void main(String[] args) {
     StocksAndOptions sap = new StocksAndOptions();
-    String fileName = "";
-
-    fileName = sap.getFileName();
-    sap.openInput(fileName);
-    fileName = sap.getNewFile(fileName);
-    sap.openPrint(fileName);
-    sap.readAndWrite();
-    sap.openInput(fileName);
-    sap.profits();
+    sap.process();
   }
 
-  public String getFileName() {
-    Scanner console = new Scanner(System.in);
-    System.out.print("Name of file -> ");
-    return console.nextLine();
-  }
+  public void process() {
+    System.out.println("\n\n\n");
 
-  public String getNewFile(String fileString) {
-    if (fileString.indexOf(".") != -1)
-      return (fileString.substring(0, fileString.indexOf(".")) + "_NEW" + fileString.substring(fileString.indexOf(".")));
-    else
-      return fileString;
-  }
+    System.out.println("Ammends your excel file for Stocks and Options.\n");
+    fileName = FileManager.getFileName();
+    System.out.println();
+    readAndWrite();
+    calculateProfits();
+    ArrayListManager.sortProfitArrayLists(name, shortTerm, longTerm, numTrades, total);
+    printProfitTable();
+    SpreadsheetManager.printProfitBar(name, total);
+    printProfitFile();
 
-  public void openInput(String fileString) {
-    try {
-      fileIn = new Scanner(new File(fileString));
-    }
-    catch (FileNotFoundException e) {
-      System.out.println("\n\nSorry, but the " + fileString +  " file was found.\n\n");
-      System.exit(1);
-    }
-
-    System.out.println("Input file opened!");
-  }
-
-  public void openPrint(String fileString) {
-		try {
-			fileOut = new PrintWriter(fileString);
-		}
-		catch (FileNotFoundException e) {
-			System.out.println("\n\nSorry, but the " + fileString +  " file was found.\n\n");
-			System.exit(1);
-		}
-
-    System.out.println("Output file opened!");
+    System.out.println();
+    fileName = FileManager.getFileName();
+    System.out.println();
+    processAllActivity();
+    profitsAllActivity();
+    ArrayListManager.sortProfitArrayLists(name, shortTerm, longTerm, numTrades, returnOfCapital, dividendReceived, numDistributions, total);
+    printProfitsAllActivity();
+    SpreadsheetManager.printProfitBar(name, total);
+    System.out.println("\n\n\n");
   }
 
   public void readAndWrite() {
     String cur = "", edited = "", parsed = "", date = "";
     boolean started = false;
+
+    fileIn =  FileManager.openInput(fileName);
+    fileOut =  FileManager.openPrint(FileManager.getNewFile(fileName, "_NEW"));
 
     while(fileIn.hasNext() && !started) {
       cur = fileIn.nextLine();
@@ -91,9 +86,9 @@ public class StocksAndOptions
         else
           edited = cur.substring(0, cur.indexOf(",")+1) + "\"Call\",\"";
 
-          parsed = cur.substring(getFirstDigInd(cur), cur.indexOf(",")-1);
+          parsed = cur.substring(SpreadsheetManager.getFirstDigInd(cur), cur.indexOf(",")-1);
           date = parsed.substring(2, 4) + "/" + parsed.substring(0,2) + "/" + parsed.substring(4, 6);
-          edited += (cur.substring(1, getFirstDigInd(cur)) + "\",\"" + date + "\"" + cur.substring(cur.indexOf(",")));
+          edited += (cur.substring(1, SpreadsheetManager.getFirstDigInd(cur)) + "\",\"" + date + "\"" + cur.substring(cur.indexOf(",")));
       }
 
       fileOut.println(edited);
@@ -104,22 +99,12 @@ public class StocksAndOptions
     System.out.println("Done Writing in Output File.");
   }
 
-  public int getFirstDigInd(String str) {
-    for(int i=0; i<str.length(); i++) {
-      if ((str.charAt(i) >= '0') && (str.charAt(i) <= '9'))
-        return i;
-    }
-
-    return -1;
-  }
-
-  public void profits() {
+  public void calculateProfits() {
       String cur = "", parsed = "";
       int arrayIndex = -1, strIndex = -1;
       double profits = -1.0;
-      boolean started = false, isShortTerm = false;
-      ArrayList<String> name = new ArrayList<String>();
-      ArrayList<Double> shortTerm = new ArrayList<Double>(), longTerm = new ArrayList<Double>();
+      boolean started = false;
+      fileIn =  FileManager.openInput(FileManager.getNewFile(fileName, "_NEW"));
 
       while(fileIn.hasNext() && !started) {
         cur = fileIn.nextLine();
@@ -130,64 +115,220 @@ public class StocksAndOptions
 
       while(fileIn.hasNext()) {
         cur = fileIn.nextLine();
-        strIndex = cur.indexOf("\"", jumpCommas(cur, 2)) + 1;
+        strIndex = cur.indexOf("\"", SpreadsheetManager.jumpCommas(cur, 2)) + 1;
         parsed = cur.substring(strIndex, cur.indexOf("\"", strIndex));
         arrayIndex = name.indexOf(parsed);
 
         if(arrayIndex == -1) {
           name.add(parsed);
           arrayIndex = name.indexOf(parsed);
+          ArrayListManager.addToArray(shortTerm, 0.0, arrayIndex);
+          ArrayListManager.addToArray(longTerm, 0.0, arrayIndex);
+          ArrayListManager.addToArray(total, 0.0, arrayIndex);
+          ArrayListManager.addToArray(numTrades, 0, arrayIndex);
         }
 
-        strIndex = cur.indexOf("\"", jumpCommas(cur, 6)) +1;
+        strIndex = cur.indexOf("\"", SpreadsheetManager.jumpCommas(cur, 6)) +1;
         parsed = cur.substring(strIndex, cur.indexOf("\"", strIndex));
 
         if(!parsed.isEmpty()) {
           profits = Double.parseDouble(parsed);
-          addToArray(shortTerm, profits, arrayIndex);
+          ArrayListManager.addToArray(shortTerm, profits, arrayIndex);
+          ArrayListManager.addToArray(total, profits, arrayIndex);
+          ArrayListManager.addToArray(numTrades, 1, arrayIndex);
         }
 
-        strIndex = cur.indexOf("\"", jumpCommas(cur, 7)) +1;
+        strIndex = cur.indexOf("\"", SpreadsheetManager.jumpCommas(cur, 7)) +1;
         parsed = cur.substring(strIndex, cur.indexOf("\"", strIndex));
 
         if(!parsed.isEmpty()) {
           profits = Double.parseDouble(parsed);
-          addToArray(longTerm, profits, arrayIndex);
+          ArrayListManager.addToArray(longTerm, profits, arrayIndex);
+          ArrayListManager.addToArray(total, profits, arrayIndex);
+          ArrayListManager.addToArray(numTrades, 1, arrayIndex);
         }
       }
-
-      System.out.println("\nShort Term Profits:");
-      System.out.printf("%10s          %-10s%n", "Ticker", "Profit");
-
-      for(int i = 0; i<shortTerm.size(); i++) 
-        System.out.printf("%10s          %-+,10.2f%n", name.get(i), shortTerm.get(i));
-
-      System.out.println("\nLong Term Profits:");
-      System.out.printf("%10s          %-10s%n", "Ticker", "Profit");
-
-      for(int i = 0; i<longTerm.size(); i++)
-          System.out.printf("%10s          %-+,10.2f%n", name.get(i), longTerm.get(i));
-
-      System.out.println("\n");
-      fileIn.close();
   }
 
-  public int jumpCommas(String str, int numCommas) {
-    int index = -1, count = 0;
+  public void printProfitTable() {
+    System.out.println("\nProfits:");
+    System.out.printf("%-10s          %-15s          %-15s          %-20s          %-20s%n", "Ticker", "Short Term Profit", "Long Term Profit", "Number of Trades", "Total");
 
-    while(str.indexOf(",", index+1)!=-1 && count<numCommas) {
-      index = str.indexOf(",", index+1);
-      count++;
+    for(int i = 0; i<name.size(); i++) {
+        System.out.printf("%-10s          ", name.get(i));
+
+        if(shortTerm.get(i) > 0)
+          System.out.printf(ANSI_GREEN + "%-+,15.2f            " + ANSI_RESET, shortTerm.get(i));
+        else if(shortTerm.get(i) == 0)
+          System.out.printf("%-+,15.2f            ", shortTerm.get(i));
+        else
+          System.out.printf(ANSI_RED + "%-+,15.2f            " + ANSI_RESET, shortTerm.get(i));
+
+        if(longTerm.get(i) > 0)
+          System.out.printf(ANSI_GREEN + "%-+,15.2f           " + ANSI_RESET, longTerm.get(i));
+        else if(longTerm.get(i) == 0)
+          System.out.printf("%-+,15.2f           ", longTerm.get(i));
+        else
+          System.out.printf(ANSI_RED + "%-+,15.2f           " + ANSI_RESET, longTerm.get(i));
+
+        System.out.printf("%-20d          ", numTrades.get(i));
+
+        if(total.get(i) > 0)
+          System.out.printf(ANSI_GREEN + "%-+,20.2f           " + ANSI_RESET, total.get(i));
+        else if(total.get(i) == 0)
+          System.out.printf("%-+,20.2f           ", total.get(i));
+        else
+          System.out.printf(ANSI_RED + "%-+,20.2f           " + ANSI_RESET, total.get(i));
+
+        System.out.println();
     }
 
-    return index;
+    System.out.println();
   }
 
-  public void addToArray(ArrayList<Double> arr, double element, int index) {
-    while(index >= arr.size())
-      arr.add(0.0);
+  public void printProfitFile() {
+      fileOut = FileManager.openPrint(FileManager.getNewFile(fileName, "_P"));
 
-    arr.set(index, element + arr.get(index));
+      String cur = "\"Symbol\",\"Short Term Profit\",\"Long Term Profit\",\"Number of Trades\"";
+      fileOut.println(cur);
+
+      for(int i=0; i<name.size(); i++) {
+        cur = "\"" + name.get(i) + "\",\"" + shortTerm.get(i) + "\",\"" + longTerm.get(i) + "\",\"" + numTrades.get(i) + "\"";
+        fileOut.println(cur);
+      }
+
+      fileOut.close();
   }
 
+  public void processAllActivity() {
+    String cur = "", edited = "", parsed = "";
+    boolean started = false;
+
+    fileIn =  FileManager.openInput(fileName);
+    fileOut =  FileManager.openPrint(FileManager.getNewFile(fileName, "_NEW"));
+
+    while(fileIn.hasNext() && !started) {
+      cur = fileIn.nextLine();
+
+      if(cur.indexOf("Symbol")!=-1 && cur.indexOf("Description")!=-1) {
+        edited = cur.substring(0, SpreadsheetManager.jumpCommas(cur, 3)+1) + "Underlying" + cur.substring(SpreadsheetManager.jumpCommas(cur, 3));
+        fileOut.println(edited);
+        started = true;
+      }
+    }
+
+    while(fileIn.hasNext()) {
+      cur = fileIn.nextLine();
+      edited = cur.substring(0, SpreadsheetManager.jumpCommas(cur, 3)+1);
+      parsed = cur.substring(SpreadsheetManager.jumpCommas(cur, 2)+1, SpreadsheetManager.jumpCommas(cur, 3));
+      edited += (parsed.substring(0, SpreadsheetManager.getFirstDigInd(parsed)) + cur.substring(SpreadsheetManager.jumpCommas(cur, 3)));
+      fileOut.println(edited);
+    }
+
+    fileIn.close();
+    fileOut.close();
+    System.out.println("Done Writing in Output File.\n");
+  }
+
+  public void profitsAllActivity() {
+    String cur = "", ticker = "", value = "";
+    int arrayIndex = -1;
+    boolean started = false;
+    fileIn = FileManager.openInput(FileManager.getNewFile(fileName, "_NEW"));
+
+    while(fileIn.hasNext() && !started) {
+      cur = fileIn.nextLine();
+
+      if(cur.indexOf("Symbol")!=-1 && cur.indexOf("Description")!=-1 && cur.indexOf("Underlying")!=-1) {
+        started = true;
+        ArrayListManager.addToArray(returnOfCapital, 0.0, name.size()-1);
+        ArrayListManager.addToArray(dividendReceived, 0.0, name.size()-1);
+        ArrayListManager.addToArray(numDistributions, 0, name.size()-1);
+      }
+    }
+
+    while(fileIn.hasNext() && started) {
+      cur = fileIn.nextLine();
+      ticker = cur.substring(SpreadsheetManager.jumpCommas(cur, 3)+1, SpreadsheetManager.jumpCommas(cur, 4));
+      arrayIndex = name.indexOf(ticker);
+
+      if(arrayIndex == -1) {
+        name.add(ticker);
+        arrayIndex = name.indexOf(ticker);
+        ArrayListManager.addToArray(shortTerm, 0.0, arrayIndex);
+        ArrayListManager.addToArray(longTerm, 0.0, arrayIndex);
+        ArrayListManager.addToArray(numTrades, 0, arrayIndex);
+        ArrayListManager.addToArray(returnOfCapital, 0.0, arrayIndex);
+        ArrayListManager.addToArray(dividendReceived, 0.0, arrayIndex);
+        ArrayListManager.addToArray(numDistributions, 0, name.size()-1);
+        ArrayListManager.addToArray(total, 0.0, arrayIndex);
+      }
+
+      if(cur.indexOf("RETURN OF CAPITAL") != -1) {
+        value = cur.substring(SpreadsheetManager.jumpCommas(cur, 6)+1, SpreadsheetManager.jumpCommas(cur, 7));
+        ArrayListManager.addToArray(returnOfCapital, Double.parseDouble(value), arrayIndex);
+        ArrayListManager.addToArray(total, Double.parseDouble(value), arrayIndex);
+        ArrayListManager.addToArray(numDistributions, 1, name.size()-1);
+      }
+      else if(cur.indexOf("DIVIDEND RECEIVED") != -1) {
+        value = cur.substring(SpreadsheetManager.jumpCommas(cur, 6)+1, SpreadsheetManager.jumpCommas(cur, 7));
+        ArrayListManager.addToArray(dividendReceived, Double.parseDouble(value), arrayIndex);
+        ArrayListManager.addToArray(total, Double.parseDouble(value), arrayIndex);
+        ArrayListManager.addToArray(numDistributions, 1, name.size()-1);
+      }
+    }
+
+    fileIn.close();
+  }
+
+  public void printProfitsAllActivity() {
+    System.out.println("\nAll Activities:");
+    System.out.printf("%-10s          %-15s          %-15s          %-20s          %-20s            %-20s         %15s          %-10s%n", "Ticker", "Short Term Profit", "Long Term Profit", "Number of Trades", "Retrurn of Capital", "Dividend Received", "Distributions", "Total");
+
+    for(int i = 0; i<name.size(); i++) {
+        System.out.printf("%-10s          ", name.get(i));
+
+        if(shortTerm.get(i) > 0)
+          System.out.printf(ANSI_GREEN + "%-+,15.2f            " + ANSI_RESET, shortTerm.get(i));
+        else if(shortTerm.get(i) == 0)
+          System.out.printf("%-+,15.2f            ", shortTerm.get(i));
+        else
+          System.out.printf(ANSI_RED + "%-+,15.2f            " + ANSI_RESET, shortTerm.get(i));
+
+        if(longTerm.get(i) > 0)
+          System.out.printf(ANSI_GREEN + "%-+,15.2f           " + ANSI_RESET, longTerm.get(i));
+        else if(longTerm.get(i) == 0)
+          System.out.printf("%-+,15.2f           ", longTerm.get(i));
+        else
+          System.out.printf(ANSI_RED + "%-+,15.2f           " + ANSI_RESET, longTerm.get(i));
+
+        System.out.printf("%-20d          ", numTrades.get(i));
+
+        if(returnOfCapital.get(i) > 0)
+          System.out.printf(ANSI_GREEN + "%-+,20.2f            " + ANSI_RESET, returnOfCapital.get(i));
+        else if(returnOfCapital.get(i) == 0)
+          System.out.printf("%-+,20.2f            ", returnOfCapital.get(i));
+        else
+          System.out.printf(ANSI_RED + "%-+,20.2f            " + ANSI_RESET, returnOfCapital.get(i));
+
+        if(dividendReceived.get(i) > 0)
+          System.out.printf(ANSI_GREEN + "%-+,20.2f           " + ANSI_RESET, dividendReceived.get(i));
+        else if(dividendReceived.get(i) == 0)
+          System.out.printf("%-+,20.2f           ", dividendReceived.get(i));
+        else
+          System.out.printf(ANSI_RED + "%-+,20.2f           " + ANSI_RESET, dividendReceived.get(i));
+
+        System.out.printf("%-15d", numDistributions.get(i));
+
+        if(total.get(i) > 0)
+          System.out.printf(ANSI_GREEN + "        %-+,10.2f%n" + ANSI_RESET, total.get(i));
+        else if(total.get(i) == 0)
+          System.out.printf("        %-+,10.2f%n", total.get(i));
+        else
+          System.out.printf(ANSI_RED + "        %-+,10.2f%n" + ANSI_RESET, total.get(i));
+
+    }
+
+    System.out.println();
+  }
 }
