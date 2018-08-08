@@ -40,6 +40,21 @@ public class ArrayListManager {
       quickSort(ticker, total, decimals, integers, 0, total.size()-1);
     }
 
+    public static void sortProfitArrayLists(ArrayList<String> ticker, ArrayList<Double> shortTerm, ArrayList<Double> longTerm, ArrayList<Integer> numTrades, ArrayList<Double> returnOfCapital, ArrayList<Double> dividendReceived, ArrayList<Integer> numDistributions, ArrayList<Double> unrealizedGains, ArrayList<Double> total) {
+      ArrayList<ArrayList<Double>> decimals = new ArrayList<ArrayList<Double>>();
+      decimals.add(shortTerm);
+      decimals.add(longTerm);
+      decimals.add(returnOfCapital);
+      decimals.add(dividendReceived);
+      decimals.add(unrealizedGains);
+
+      ArrayList<ArrayList<Integer>> integers = new ArrayList<ArrayList<Integer>>();
+      integers.add(numTrades);
+      integers.add(numDistributions);
+
+      quickSort(ticker, total, decimals, integers, 0, total.size()-1);
+    }
+
   public static void quickSort(ArrayList<String> ticker, ArrayList<Double> total, ArrayList<ArrayList<Double>> decimals, ArrayList<ArrayList<Integer>> integers, int low, int high) {
       if(low>=high) return;
       String tempName = "";

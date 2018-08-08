@@ -6,9 +6,27 @@ public class SpreadsheetManager{
   public static final String ANSI_RED = "\u001B[31m";
   public static final String ANSI_GREEN = "\u001B[32m";
 
+  public static String removeQM(String str) {
+    StringBuilder sb = new StringBuilder(str);
+    int numMarksRemoved = 0;
+
+    for(int i=0; i<sb.length(); i++) {
+      if(sb.charAt(i) == '\"') {
+        while(sb.indexOf(",", i+1)!=-1 && sb.indexOf(",", i+1)<sb.indexOf("\"", i+1) && numMarksRemoved%2==0)
+          sb.deleteCharAt(sb.indexOf(",", i));
+
+        sb.deleteCharAt(i);
+        i--;
+        numMarksRemoved++;
+      }
+    }
+
+    return sb.toString();
+  }
+
   public static int getFirstDigInd(String str) {
       for(int i=0; i<str.length(); i++) {
-        if ((str.charAt(i) >= '0') && (str.charAt(i) <= '9'))
+        if((str.charAt(i) >= '0') && (str.charAt(i) <= '9'))
           return i;
       }
 
@@ -21,6 +39,10 @@ public class SpreadsheetManager{
       while(str.indexOf(",", index+1)!=-1 && count<numCommas) {
         index = str.indexOf(",", index+1);
         count++;
+
+        if(numCommas==15) {
+          System.out.println(count + "  " + index);
+        }
       }
 
       return index;
